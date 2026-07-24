@@ -23,10 +23,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      APP_NAME: ${{ secrets.EB_APPLICATION_NAME || 'BeijingHousePrice' }}
-      ENV_NAME: ${{ secrets.EB_ENVIRONMENT_NAME || 'Houseprediction-env' }}
-      S3_BUCKET: ${{ secrets.EB_S3_BUCKET || 'elasticbeanstalk-us-east-1-325053821714' }}
+      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      APP_NAME: BeijingHousePrice
+      ENV_NAME: Houseprediction-env
+      S3_BUCKET: elasticbeanstalk-us-east-1-325053821714
       VERSION_LABEL: house-price-${{ github.run_number }}
 
     steps:
