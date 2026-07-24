@@ -11,30 +11,30 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy to Elastic Beanstalk
     runs-on: ubuntu-latest
 
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      APP_NAME: ${{ secrets.EB_APPLICATION_NAME }}
+      ENV_NAME: ${{ secrets.EB_ENVIRONMENT_NAME }}
+      S3_BUCKET: ${{ secrets.EB_S3_BUCKET }}
+      VERSION_LABEL: house-price-${{ github.run_number }}
+
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Create deployment package
-        run: |
-          cd BeijingHousePricePrediction
-          zip -r ../deploy.zip . \
-            -x ".git/*" \
-            -x ".vscode/*" \
-            -x "venv/*" \
-            -x "__pycache__/*" \
-            -x "*.pyc" \
-            -x ".DS_Store" \
-            -x "*.ipynb"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-      - name: Show deployment package size
+      - name: Install AWS CLI
         run: |
-          ls -lh deploy.zip
+          python -m pip install --upgrade pip
+          pip install awscli zip
 
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -42,11 +42,47 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Verify AWS Identity
+        run: |
+          aws sts get-caller-identity
+
+      - name: Build Deployment Package
+        run: |
+          zip -r deploy.zip . \
+            -x ".git/*" \
+               ".github/*" \
+               ".elasticbeanstalk/*" \
+               ".vscode/*" \
+               "venv/*" \
+               "__pycache__/*" \
+               ".ipynb_checkpoints/*" \
+               "*.pyc" \
+               "*.DS_Store" \
+               "House_Price_Prediction.ipynb"
+
+      - name: Upload ZIP to S3
+        run: |
+          aws s3 cp deploy.zip s3://${{ env.S3_BUCKET }}/${{ env.VERSION_LABEL }}.zip
+
+      - name: Create Application Version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${{ env.APP_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
+            --source-bundle S3Bucket=${{ env.S3_BUCKET }},S3Key=${{ env.VERSION_LABEL }}.zip
+
       - name: Deploy to Elastic Beanstalk
-        uses: aws-actions/aws-elasticbeanstalk-deploy@v1.0.0
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          application-name: "House prediction"
-          environment-name: "Houseprediction-env"
-          version-label: house-price-${{ github.run_number }}
-          deployment-package-path: deploy.zip
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "${{ env.ENV_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}"
+
+      - name: Wait for Deployment
+        run: |
+          aws elasticbeanstalk wait environment-updated \
+            --environment-names "${{ env.ENV_NAME }}"
+
+      - name: Show Environment Status
+        run: |
+          aws elasticbeanstalk describe-environments \
+            --environment-names "${{ env.ENV_NAME }}"
