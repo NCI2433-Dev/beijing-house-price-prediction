@@ -1,13 +1,17 @@
+from pathlib import Path
+
 import streamlit as st
 import pandas as pd
 import joblib
+
+BASE_DIR = Path(__file__).resolve().parent
 
 # ======================================================
 # Load Model
 # ======================================================
 
-model = joblib.load("xgboost_house_price.pkl")
-feature_columns = joblib.load("feature_columns.pkl")
+model = joblib.load(BASE_DIR / "xgboost_house_price.pkl")
+feature_columns = joblib.load(BASE_DIR / "feature_columns.pkl")
 
 TRADE_YEAR = 2017
 

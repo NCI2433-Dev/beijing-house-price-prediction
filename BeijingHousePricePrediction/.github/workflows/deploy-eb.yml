@@ -1,0 +1,66 @@
+name: Deploy to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      APP_NAME: ${{ secrets.EB_APPLICATION_NAME }}
+      ENV_NAME: ${{ secrets.EB_ENVIRONMENT_NAME }}
+      S3_BUCKET: ${{ secrets.EB_S3_BUCKET }}
+      VERSION_LABEL: house-price-${{ github.run_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install AWS CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install awscli
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Build deployment ZIP
+        run: |
+          zip -r deploy.zip . \
+            -x '.git/*' '.vscode/*' 'venv/*' '__pycache__/*' '.ipynb_checkpoints/*' '.github/*' '.elasticbeanstalk/*' '*.pyc' '.DS_Store' 'House_Price_Prediction.ipynb'
+
+      - name: Upload ZIP to S3
+        run: |
+          aws s3 cp deploy.zip s3://${{ env.S3_BUCKET }}/deploy.zip
+
+      - name: Create Elastic Beanstalk application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${{ env.APP_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
+            --source-bundle "S3Bucket=${{ env.S3_BUCKET }},S3Key=deploy.zip"
+
+      - name: Deploy to existing Elastic Beanstalk environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --application-name "${{ env.APP_NAME }}" \
+            --environment-name "${{ env.ENV_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}"

@@ -1,0 +1,13 @@
+# Ignore local/dev files from deployment package
+.git/
+.vscode/
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+.DS_Store
+*.ipynb
+.github/
+.elasticbeanstalk/
+venv/
+notebooks/
+house-price-prediction-*.zip
