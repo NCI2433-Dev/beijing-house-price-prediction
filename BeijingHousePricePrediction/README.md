@@ -32,6 +32,8 @@ Libraries Used:
 
 Dataset:
 This project uses the publicly available Beijing Housing dataset.
+    -https://www.kaggle.com/datasets/ruiqurm/lianjia
+
 The cleaned dataset (beijing_housing_cleaned.csv) is derived from the public dataset and is not included in this submission, as per the assignment instructions.
 
 Files Included:
